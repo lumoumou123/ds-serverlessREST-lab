@@ -63,9 +63,22 @@ export class RestAPIStack extends cdk.Stack {
       memorySize: 128,
       environment: {
         TABLE_NAME: moviesTable.tableName,
-        REGION: "eu-west-1", 
+        REGION: "eu-west-1",
       },
     });
+
+    const deleteMovieFn = new lambdanode.NodejsFunction(this, "DeleteMovieFn", {
+      architecture: lambda.Architecture.ARM_64,
+      runtime: lambda.Runtime.NODEJS_16_X,
+      entry: `${__dirname}/../lambdas/deleteMovie.ts`, // Lambda函数的路径
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 128,
+      environment: {
+        TABLE_NAME: moviesTable.tableName,
+        REGION: "eu-west-1",
+      },
+    });
+
 
 
     new custom.AwsCustomResource(this, "moviesddbInitData", {
@@ -88,6 +101,8 @@ export class RestAPIStack extends cdk.Stack {
     moviesTable.grantReadData(getMovieByIdFn)
     moviesTable.grantReadData(getAllMoviesFn)
     moviesTable.grantReadWriteData(newMovieFn)
+    moviesTable.grantReadWriteData(deleteMovieFn);
+
 
     const api = new apig.RestApi(this, "RestAPI", {
       description: "demo api",
@@ -116,6 +131,11 @@ export class RestAPIStack extends cdk.Stack {
       "GET",
       new apig.LambdaIntegration(getMovieByIdFn, { proxy: true })
     );
+    movieEndpoint.addMethod(
+      "DELETE",
+      new apig.LambdaIntegration(deleteMovieFn, { proxy: true })
+    );
+    
     
 
   }
